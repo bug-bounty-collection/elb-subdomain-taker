@@ -1,4 +1,4 @@
- Build in a golang image
+# Build in a golang image
 FROM golang as builder
 
 COPY . /buildfolder
