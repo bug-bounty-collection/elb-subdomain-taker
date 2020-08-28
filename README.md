@@ -23,7 +23,7 @@ That's it.
 Pre-built binaries will be available soon.
 
 ### Docker
-The images are automatically build via [Quay](quay.io).
+The images are automatically build via [Quay](https://quay.io/repository/rira12621/elb-subdomain-taker?tab=builds).
 
 You can run the taker via
 
