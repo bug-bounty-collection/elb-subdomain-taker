@@ -3,6 +3,7 @@ Utility to overtake unclaimed subomdains pointing to AWS ELBs
 
 ![Go](https://github.com/RiRa12621/elb-subdomain-taker/workflows/Go/badge.svg)
 ![Docker Image CI](https://github.com/RiRa12621/elb-subdomain-taker/workflows/Docker%20Image%20CI/badge.svg)
+[![Docker Repository on Quay](https://quay.io/repository/rira12621/elb-subdomain-taker/status "Docker Repository on Quay")](https://quay.io/repository/rira12621/elb-subdomain-taker)
 
 ## How to run
 
