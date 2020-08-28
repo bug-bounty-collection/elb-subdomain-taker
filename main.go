@@ -130,6 +130,9 @@ func main() {
 					fmt.Println(elb.ErrCodeUnsupportedProtocolException, aerr.Error())
 				case elb.ErrCodeOperationNotPermittedException:
 					fmt.Println(elb.ErrCodeOperationNotPermittedException, aerr.Error())
+				case elb.ErrCodeLimitExceededException:
+					// Sleep if we hit the rate limit
+					time.Sleep(10000 * time.Millisecond)
 				default:
 					fmt.Println(aerr.Error())
 				}
