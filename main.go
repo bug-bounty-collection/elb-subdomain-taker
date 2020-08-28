@@ -78,7 +78,33 @@ func main() {
 
 	// initialise empty var so we can loop
 	result := ""
+	// Loop through creation until we found it
 	for result != *elbPtr {
+		// if we have an ELB at this point, we need to delete it to not pile them up
+		if result != "" {
+			input := &elb.DeleteLoadBalancerInput{
+				LoadBalancerName: aws.String(result),
+			}
+
+			_, err := svc.DeleteLoadBalancer(input)
+			if err != nil {
+				if aerr, ok := err.(awserr.Error); ok {
+					switch aerr.Code() {
+					default:
+						fmt.Println(aerr.Error())
+					}
+				} else {
+					// Print the error, cast err to awserr.Error to get the Code and
+					// Message from an error.
+					fmt.Println(err.Error())
+				}
+				return
+			}
+		}
+		fmt.Println(result)
+
+		// Now start to create a new ELB
+		// reference: https://docs.aws.amazon.com/sdk-for-go/api/service/elb/#ELB.CreateLoadBalancer
 		fmt.Println("Creating ELB")
 		input := &elb.CreateLoadBalancerInput{
 			AvailabilityZones: []*string{
