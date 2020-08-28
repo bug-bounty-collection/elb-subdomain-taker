@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/elb"
 	"log"
 	"regexp"
+	"time"
 )
 
 func main() {
@@ -130,9 +131,6 @@ func main() {
 					fmt.Println(elb.ErrCodeUnsupportedProtocolException, aerr.Error())
 				case elb.ErrCodeOperationNotPermittedException:
 					fmt.Println(elb.ErrCodeOperationNotPermittedException, aerr.Error())
-				case elb.ErrCodeLimitExceededException:
-					// Sleep if we hit the rate limit
-					time.Sleep(10000 * time.Millisecond)
 				default:
 					fmt.Println(aerr.Error())
 				}
@@ -173,6 +171,8 @@ func main() {
 			}
 			fmt.Println("Deleted existing ELB successfully")
 		}
+		fmt.Println("Sleeping before we try again to avoid the rate limit")
+		time.Sleep(2000 * time.Millisecond)
 		fmt.Println("Next try")
 	}
 	fmt.Println("Found match!")
