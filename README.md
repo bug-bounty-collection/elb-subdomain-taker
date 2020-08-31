@@ -48,6 +48,24 @@ What happens here is the following:
 * Valid AWS credentials set up
 * A vulnerable subdomain
 
+## Metrics
+
+elb-subdomain-taker exposes prometheus style metrics on port 2112 and `/metrics`
+
+See the table below for a list of implemented custom metrics in addition to default go metrics.
+
+
+| Metric                                 | Explanation                      |
+|----------------------------------------|----------------------------------|
+| elb_subdomain_taker_elbs_created_total | The total number of ELBs created |
+| elb_subdomain_taker_elbs_deleted_total | The total number of ELBs deleted |
+
+You can use those metrics to monitor the behaviour of the elb-subdomain-taker.
+Under regular circumstances the number of created and deleted records should be the same.
+If they're not, you're piling up ELBs.
+
+You can also use those metrics to monitor the rate at which ELBs are created.
+
 ## Warning
 
 **THIS CAN BE VERY PRICEY**
