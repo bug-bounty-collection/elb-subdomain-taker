@@ -3,16 +3,45 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
+	"regexp"
+	"time"
+
+	// AWS libraries
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elb"
-	"log"
-	"regexp"
-	"time"
+
+	// Custom metrics require prom libraries
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
+	// serve metrics on 2112
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		http.ListenAndServe(":2112", nil)
+	}()
+	// Declaring different metrics
+	// Total number of ELBs created
+	var (
+		elbCreated = promauto.NewCounter(prometheus.CounterOpts{
+			Name: "elb_subdomain_taker_elbs_created_total",
+			Help: "The total number of ELBs created",
+		})
+	)
+	// Total number of ELBs deleted
+	var (
+		elbDeleted = promauto.NewCounter(prometheus.CounterOpts{
+			Name: "elb_subdomain_taker_elbs_deleted_total",
+			Help: "The total number of ELBs deleted",
+		})
+	)
+
 	// CLI flags
 	elbPtr := flag.String("elb", "", "the elb to take over - myelb-1234.elb.amazonaws.com")
 	// Parse flags
@@ -141,6 +170,8 @@ func main() {
 			}
 			return
 		}
+		// Increase elbCreated counter
+		elbCreated.Inc()
 		fmt.Println(result)
 		if *result.DNSName == *elbPtr {
 			fmt.Println("Found match!")
@@ -169,6 +200,8 @@ func main() {
 				}
 				return
 			}
+			// Increase elbDeleted counter
+			elbDeleted.Inc()
 			fmt.Println("Deleted existing ELB successfully")
 		}
 		fmt.Println("Sleeping before we try again to avoid the rate limit")
