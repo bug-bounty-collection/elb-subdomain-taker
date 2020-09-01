@@ -43,6 +43,17 @@ func main() {
 	}
 }
 
+func AwsAccountPooler(count int) (*CreateAccountOutput, error) {
+	// Declaring different metrics
+	// Total number of AWS accounts created
+	var (
+		accountCreated = promauto.NewCounter(prometheus.CounterOpts{
+			Name: "elb_subdomain_taker_aws_accounts_created_total",
+			Help: "The total number of AWS accounts created",
+		})
+	)
+}
+
 func CreateDestroyLoop(elbPtr *string) bool {
 	// Declaring different metrics
 	// Total number of ELBs created
