@@ -59,6 +59,7 @@ See the table below for a list of implemented custom metrics in addition to defa
 |----------------------------------------|----------------------------------|
 | elb_subdomain_taker_elbs_created_total | The total number of ELBs created |
 | elb_subdomain_taker_elbs_deleted_total | The total number of ELBs deleted |
+| elb_subdomain_taker_elb_random_number  | Random number in the new ELB     |
 
 You can use those metrics to monitor the behaviour of the elb-subdomain-taker.
 Under regular circumstances the number of created and deleted records should be the same.
