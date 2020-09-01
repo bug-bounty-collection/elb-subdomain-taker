@@ -1,7 +1,7 @@
 # elb-subdomain-taker
 Utility to overtake unclaimed subomdains pointing to AWS ELBs
 
-![Go](https://github.com/RiRa12621/bug-bounty-collection/workflows/Go/badge.svg)
+![Go](https://github.com/bug-bounty-collection/elb-subdomain-taker/workflows/Go/badge.svg)
 ![Docker Image CI](https://github.com/bug-bounty-collection/elb-subdomain-taker/workflows/Docker%20Image%20CI/badge.svg)
 [![Docker Repository on Quay](https://quay.io/repository/bug-bounty-collection/elb-subdomain-taker/status "Docker Repository on Quay")](https://quay.io/repository/rira12621/elb-subdomain-taker)
 
