@@ -72,7 +72,7 @@ func CreateDestroyLoop(elbPtr *string) bool {
 	   Define regex to match the "random" part of the ELB
 	              This will match any random string between 6 and 10 digits enclosed between `-` and `.`
 	*/
-	reNum := regexp.MustCompile(`-(\d{6,10})\.`)
+	reNum := regexp.MustCompile(`-(\d{5,10})\.`)
 	// Get the "random" number from the elb
 	NumToFind := string(reNum.FindStringSubmatch(*elbPtr)[1])
 
