@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"time"
 
 	// AWS libraries
@@ -56,6 +57,13 @@ func CreateDestroyLoop(elbPtr *string) bool {
 		elbDeleted = promauto.NewCounter(prometheus.CounterOpts{
 			Name: "elb_subdomain_taker_elbs_deleted_total",
 			Help: "The total number of ELBs deleted",
+		})
+	)
+	// Value of random number in elb
+	var (
+		elbRandomNumber = promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "elb_subdomain_taker_elb_random_number",
+			Help: "The random number generated for the new ELBs by AWS",
 		})
 	)
 
@@ -184,6 +192,11 @@ func CreateDestroyLoop(elbPtr *string) bool {
 		// Increase elbCreated counter
 		elbCreated.Inc()
 		fmt.Println(result)
+		randomNumberNew, err := strconv.ParseFloat(reNum.FindStringSubmatch(*result.DNSName)[1], 64)
+		if err != nil {
+			fmt.Println(err)
+		}
+		elbRandomNumber.Set(randomNumberNew)
 		if *result.DNSName == *elbPtr {
 			return true
 		}
